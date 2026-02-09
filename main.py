@@ -1,106 +1,136 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session, select
 from typing import Optional
+from contextlib import asynccontextmanager
 from datetime import datetime
 
+from database import create_db_and_tables, get_session
+from models import Task, TaskCreate, TaskUpdate, TaskPublic
 
-app = FastAPI(title="Task Management API", version="1.0.0")
+# Lifespan context manager for startup/shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Create tables
+    print("Creating database tables...")
+    create_db_and_tables()
+    yield
+    # Shutdown: Cleanup (if needed)
+    print("Shutting down...")
 
-# Request model for creating tasks
-class TaskCreate(BaseModel):
-    title: str
-    completed: bool = False
-    
-class TaskUpdate(BaseModel):
-    title: Optional[str] = None
-    completed: Optional[bool] = None
+app = FastAPI(
+    title="Task Management API",
+    version="2.0.0",
+    description="Task API with PostgreSQL",
+    lifespan=lifespan
+)
 
-class Task(BaseModel):
-    id: int
-    title: str
-    completed: bool = False
-    created_at: datetime
-    
-    class Config:        # this is for swagger ui docs 
-        json_schema_extra = {
-            "example": {
-                "id": 1,
-                "title": "Learn FastAPI",
-                "completed": False,
-                "created_at": "2025-12-31T10:00:00"
-            }
-        }
-        
-# In-memory database
-tasks_db: dict[int, Task] = {}
-task_id_counter = 1
-        
-    
-from fastapi import HTTPException, status
-@app.get("/")  # decorator to tell fastapi that the function right after handels [ GET / ]
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # use the frontend url later
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
 def root():
     return {
-        "message": "Task Management API",
-        "endpoints": {
-            "docs": "/docs",
-            "tasks": "/tasks"
-        }
+        "message": "Task Management API v2.0",
+        "database": "PostgreSQL",
+        "docs": "/docs"
     }
-    
-@app.post("/tasks", response_model=Task, status_code=status.HTTP_201_CREATED)
-def create_task(task_data: TaskCreate):
-    global task_id_counter
-    new_task = Task(
-        id=task_id_counter,
-        title=task_data.title,
-        completed=task_data.completed,
-        created_at=datetime.now()
-    )
-    
-    tasks_db[task_id_counter] = new_task
-    task_id_counter += 1
-    
-    return new_task
 
-@app.get("/tasks", response_model=list[Task])
-def list_tasks():
-    return list(tasks_db.values())
-
-@app.get("/tasks/{task_id}", response_model=Task)
-def get_task(task_id: int):
-    if task_id not in tasks_db:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task with id {task_id} not found"
-        )
-        
-    return tasks_db[task_id]
-
-@app.patch("/tasks/{task_id}", response_model=Task)
-def update_task(task_id: int, task_update: TaskUpdate):
-    if task_id not in tasks_db:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Task with id {task_id} not found"
-        )
-    
-    task = tasks_db[task_id]
-    
-    if task_update.title is not None:
-        task.title = task_update.title
-    if task_update.completed is not None:
-        task.completed = task_update.completed
-        
+# CREATE - POST /tasks
+@app.post("/tasks", response_model=TaskPublic, status_code=status.HTTP_201_CREATED)
+def create_task(
+    task_data: TaskCreate,
+    session: Session = Depends(get_session)
+):
+    """Create a new task"""
+    task = Task.model_validate(task_data)
+    session.add(task)
+    session.commit()
+    session.refresh(task)  # Get the generated ID
     return task
 
-@app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(task_id: int):
-    if task_id in tasks_db:
-        del tasks_db[task_id]
+# READ ALL - GET /tasks
+@app.get("/tasks", response_model=list[TaskPublic])
+def get_tasks(
+    completed: Optional[bool] = None,
+    session: Session = Depends(get_session)
+):
+    """Get all tasks, optionally filter by completion status"""
+    statement = select(Task)  # creat select * from task query 
+    
+    if completed is not None:
+        statement = statement.where(Task.completed == completed)  # adding where ...
+    
+    tasks = session.exec(statement).all()  # exec it to return a list of rows
+    return tasks
+
+# READ ONE - GET /tasks/{task_id}
+@app.get("/tasks/{task_id}", response_model=TaskPublic)
+def get_task(
+    task_id: int,
+    session: Session = Depends(get_session)
+):
+    """Get a specific task by ID"""
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task with id {task_id} not found"
+        )
+    return task
+
+# UPDATE - PATCH /tasks/{task_id}
+@app.patch("/tasks/{task_id}", response_model=TaskPublic)
+def update_task(
+    task_id: int,
+    task_update: TaskUpdate,
+    session: Session = Depends(get_session)
+):
+    """Update a task (partial update)"""
+    try:
+        task = session.get(Task, task_id)
+        if not task:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Task with id {task_id} not found"
+            )
         
+        # Update only provided fields, extracting the unseted fields from response
+        task_data = task_update.model_dump(exclude_unset=True)
+        print(f"DEBUG: task_data = {task_data}")  # ← Add this
+        for key, value in task_data.items():
+            setattr(task, key, value)
+        
+        task.updated_at = datetime.now()
+        session.add(task)
+        session.commit()
+        session.refresh(task)
+        return task
+    except Exception as e:
+        print(f"ERROR: {e}")  # ← Add this
+        traceback.print_exc()  # ← Add this
+        raise
+
+# DELETE - DELETE /tasks/{task_id}
+@app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_task(
+    task_id: int,
+    session: Session = Depends(get_session)
+):
+    """Delete a task"""
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task with id {task_id} not found"
+        )
+    
+    session.delete(task)
+    session.commit()
     return None
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8080)
-
