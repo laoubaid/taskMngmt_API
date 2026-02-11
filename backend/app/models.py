@@ -1,11 +1,15 @@
 from sqlmodel import SQLModel, Field
-from typing import Optional
+from sqlalchemy import String
+from typing import Optional, Union
 from datetime import datetime
 
 class TaskBase(SQLModel):
     """shared fields for create/update operations"""
     title: str = Field(min_length=1, max_length=200)
     completed: bool = False
+    description: Optional[str] = None
+    due_date: Optional[datetime] = None
+    priority: Optional[str] = Field(default="low", sa_type=String)
 
 class Task(TaskBase, table=True):
     """db table model"""
@@ -19,16 +23,6 @@ class TaskCreate(TaskBase):
     """req model for creating tasks"""
     pass
 
-# class TaskUpdate(SQLModel):
-#     """req model for updating tasks (all fields optional)"""
-#     title: Optional[str] = Field(default=None, min_length=1, max_length=200) # i want to add None while keeping the field check
-#     completed: Optional[bool] = None
-
-# class TaskUpdate(SQLModel):
-#     """req model for updating tasks (all fields optional)"""
-#     title: Optional[str] = None
-#     completed: Optional[bool] = None
-
 class TaskUpdate(SQLModel):
     """req model for updating tasks (all fields optional)"""
     title: Union[str, None] = Field(
@@ -36,6 +30,9 @@ class TaskUpdate(SQLModel):
         min_length=1, 
         max_length=200
     )
+    description: Union[str, None] = None
+    due_date: Union[datetime, None] = None
+    priority: Union[str, None] = None
     completed: Optional[bool] = None
 
 class TaskPublic(TaskBase):

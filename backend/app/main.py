@@ -59,14 +59,21 @@ def create_task(
 @app.get("/tasks", response_model=list[TaskPublic])
 def get_tasks(
     completed: Optional[bool] = None,
-    session: Session = Depends(get_session)
+    priority: Optional[str] = None,
+    session: Session = Depends(get_session),
+    page: int = 1,
+    limit: int = 10,
 ):
     """Get all tasks, optionally filter by completion status"""
     statement = select(Task)  # creat select * from task query 
     
     if completed is not None:
-        statement = statement.where(Task.completed == completed)  # adding where ...
+        statement = statement.where(Task.completed == completed)  # adding completed filter
     
+    if priority is not None:
+        statement = statement.where(Task.priority == priority)  # adding priority filter
+    
+    statement = statement.offset((page - 1) * limit).limit(limit)
     tasks = session.exec(statement).all()  # exec it to return a list of rows
     return tasks
 
@@ -103,7 +110,6 @@ def update_task(
         
         # Update only provided fields, extracting the unseted fields from response
         task_data = task_update.model_dump(exclude_unset=True)
-        print(f"DEBUG: task_data = {task_data}")  # ← Add this
         for key, value in task_data.items():
             setattr(task, key, value)
         
@@ -113,8 +119,7 @@ def update_task(
         session.refresh(task)
         return task
     except Exception as e:
-        print(f"ERROR: {e}")  # ← Add this
-        traceback.print_exc()  # ← Add this
+        print(f"ERROR: {e}")
         raise
 
 # DELETE - DELETE /tasks/{task_id}

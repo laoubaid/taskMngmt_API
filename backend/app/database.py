@@ -1,9 +1,12 @@
 from sqlmodel import SQLModel, create_engine, Session
 from typing import Generator
+from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# .env is in the project root (one level up from app/)
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(env_path)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
