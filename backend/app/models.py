@@ -2,6 +2,9 @@ from sqlmodel import SQLModel, Field
 from sqlalchemy import String
 from typing import Optional, Union
 from datetime import datetime
+from pydantic import BaseModel
+
+# database & validation schemas
 
 class TaskBase(SQLModel):
     """shared fields for create/update operations"""
@@ -40,3 +43,16 @@ class TaskPublic(TaskBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
+# expected frontend data
+class EstimationRequest(BaseModel):
+    additional_context: str
+    complexity_level: Optional[str] = "medium"
+    tools_available: Optional[str] = None
+
+# estimation reponse
+class Estimation(BaseModel):
+    task_id: int
+    estimated_minutes: int
+    confidence_score: float
+    explanation: str

@@ -6,7 +6,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 
 from database import create_db_and_tables, get_session
-from models import Task, TaskCreate, TaskUpdate, TaskPublic
+from models import Task, TaskCreate, TaskUpdate, TaskPublic, EstimationRequest, Estimation
+
+import asyncio
 
 # Lifespan context manager for startup/shutdown events
 @asynccontextmanager
@@ -33,6 +35,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# endpoints for the CRUD operations (the task manager functions)
 
 @app.get("/")
 def root():
@@ -139,3 +144,24 @@ def delete_task(
     session.delete(task)
     session.commit()
     return None
+
+
+@app.post("/tasks/estimation/{task_id}", response_model=Estimation)
+async def get_task_estimation(task_id: int, request_data: EstimationRequest):
+    """
+    Placeholder for AI-powered task duration estimation
+    Expects additional context from the user form
+    """
+    # example AI processing time
+    await asyncio.sleep(1.5)
+    
+    # In the future, 'request_data.additional_context' will be sent to the AI API
+    print(f"AI is analyzing: {request_data.additional_context}")
+
+    return {
+        "task_id": task_id,
+        "estimated_minutes": 120 if request_data.complexity_level == "hard" else 45,
+        "confidence_score": 0.92,
+        "explanation": f"Based on your context ('{request_data.additional_context[:30]}...'), "
+                       f"this task is estimated at {request_data.complexity_level} complexity."
+    }
