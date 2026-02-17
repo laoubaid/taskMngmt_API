@@ -10,6 +10,8 @@ from models import Task, TaskCreate, TaskUpdate, TaskPublic, EstimationRequest, 
 
 import asyncio
 
+from services.ai_service import get_stepfun_estimation
+
 # Lifespan context manager for startup/shutdown events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -147,21 +149,46 @@ def delete_task(
 
 
 @app.post("/tasks/estimation/{task_id}", response_model=Estimation)
-async def get_task_estimation(task_id: int, request_data: EstimationRequest):
-    """
-    Placeholder for AI-powered task duration estimation
-    Expects additional context from the user form
-    """
-    # example AI processing time
-    await asyncio.sleep(1.5)
-    
-    # In the future, 'request_data.additional_context' will be sent to the AI API
-    print(f"AI is analyzing: {request_data.additional_context}")
+async def get_task_estimation(task_id: int, request_data: EstimationRequest, session: Session = Depends(get_session)):
 
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # calling the AI service with real task data + context added by the user
+    ai_result = await get_stepfun_estimation(
+        task_title=task.title,
+        task_desc=task.description or "",
+        context=request_data.additional_context
+    )
+
+    if not ai_result:
+        raise HTTPException(status_code=503, detail="AI Service unavailable")
+
+    # return the merged result
     return {
         "task_id": task_id,
-        "estimated_minutes": 120 if request_data.complexity_level == "hard" else 45,
-        "confidence_score": 0.92,
-        "explanation": f"Based on your context ('{request_data.additional_context[:30]}...'), "
-                       f"this task is estimated at {request_data.complexity_level} complexity."
+        "estimated_minutes": ai_result.get("estimated_minutes"),
+        "confidence_score": ai_result.get("confidence_score"),
+        "explanation": ai_result.get("explanation")
     }
+
+# @app.post("/tasks/estimation/{task_id}", response_model=Estimation)
+# async def get_task_estimation(task_id: int, request_data: EstimationRequest):
+#     """
+#     Placeholder for AI-powered task duration estimation
+#     Expects additional context from the user form
+#     """
+#     # example AI processing time
+#     await asyncio.sleep(1.5)
+    
+#     # In the future, 'request_data.additional_context' will be sent to the AI API
+#     print(f"AI is analyzing: {request_data.additional_context}")
+
+#     return {
+#         "task_id": task_id,
+#         "estimated_minutes": 120 if request_data.complexity_level == "hard" else 45,
+#         "confidence_score": 0.92,
+#         "explanation": f"Based on your context ('{request_data.additional_context[:30]}...'), "
+#                        f"this task is estimated at {request_data.complexity_level} complexity."
+#     }
