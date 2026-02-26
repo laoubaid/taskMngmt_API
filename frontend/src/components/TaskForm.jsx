@@ -26,7 +26,7 @@ export default function TaskForm() {
                 // 2. Stringify the state object for the body
                 body: JSON.stringify(formData),
             })
-    
+
             if (!response.ok) {
                 throw new Error(`${response.status}: failed to create the task !!!`)
             }
@@ -45,16 +45,16 @@ export default function TaskForm() {
     return (
         <div className="w-1/3 max-w-md mx-auto bg-white p-6 rounded-xl shadow-lg border border-gray-100">
             <h2 className="text-2xl font-bold mb-6 text-gray-800">Create New Task</h2>
-            
+
             {/* 3. Use onSubmit instead of onClick on the button */}
             <form onSubmit={createTask} className="flex flex-col gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                    <input 
+                    <input
                         name="title"
                         value={formData.title}
                         onChange={handleChange}
-                        type="text" 
+                        type="text"
                         placeholder="What needs to be done?"
                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
                         required
@@ -63,7 +63,7 @@ export default function TaskForm() {
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea 
+                    <textarea
                         name="description"
                         value={formData.description}
                         onChange={handleChange}
@@ -75,7 +75,7 @@ export default function TaskForm() {
                 <div className="flex gap-4">
                     <div className="flex-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                        <select 
+                        <select
                             name="priority"
                             value={formData.priority}
                             onChange={handleChange}
@@ -89,17 +89,17 @@ export default function TaskForm() {
 
                     <div className="flex-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-                        <input 
+                        <input
                             name="due_date"
                             value={formData.due_date || ''}
                             onChange={handleChange}
-                            type="date" 
+                            type="date"
                             className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                     </div>
                 </div>
 
-                <button 
+                <button
                     type="submit"
                     className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-blue-700 transition-colors shadow-sm"
                 >

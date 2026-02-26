@@ -19,8 +19,8 @@ engine = create_engine(
 )
 
 def create_db_and_tables():
-    """Create all tables on startup"""
-    SQLModel.metadata.create_all(engine)
+    """Create all tables on startup (Disabled, using Alembic instead)"""
+    pass
 
 def get_session() -> Generator[Session, None, None]:
     """Dependency for database sessions"""
