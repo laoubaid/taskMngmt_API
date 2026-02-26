@@ -25,6 +25,8 @@ A `.env` file must be created in the `backend/` directory. It must contain the f
 
 `OPENROUTER_API_KEY=your_key_here`
 
+also create a `.env` file in the `frontend/` directory. check the `.env.example` file for more info.
+
 > **Note:** Do not wrap the API key in quotes, as Docker parses environment files literally.
 
 ## Deployment
