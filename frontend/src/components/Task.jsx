@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Button from "./Button";
 
+const API_URL = import.meta.env.VITE_API_URL
+
 export default function Task({ task }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [context, setContext] = useState("");
@@ -10,7 +12,7 @@ export default function Task({ task }) {
     const handleGenerate = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`http://localhost:8000/tasks/estimation/${task.id}`, {
+            const response = await fetch(`${API_URL}/tasks/estimation/${task.id}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

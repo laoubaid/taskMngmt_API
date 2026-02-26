@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import Button from './Button'
 import Task from './Task'
 
+const API_URL = import.meta.env.VITE_API_URL
+
 export default function TaskList() {
 
     const [tasks, setTasks] = useState([])        // holds an array of tasks
@@ -10,7 +12,7 @@ export default function TaskList() {
 
     const loadTasks = async (page) => {
         try {
-            const response = await fetch(`http://localhost:8000/tasks?page=${page}&limit=3`)
+            const response = await fetch(`${API_URL}/tasks?page=${page}&limit=3`)
 
             if (!response.ok) {
                 throw new Error('Network response was not ok')

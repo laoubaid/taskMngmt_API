@@ -1,6 +1,8 @@
 
 import { useState, useEffect } from 'react'
 
+const API_URL = import.meta.env.VITE_API_URL
+
 export default function TaskForm() {
 
     const [formData, setFormData] = useState({
@@ -14,7 +16,7 @@ export default function TaskForm() {
 
         e.preventDefault();
 
-        const url = `http://localhost:8000/tasks`
+        const url = `${API_URL}/tasks`
         try {
             const response = await fetch(url, {
                 method: "POST",

@@ -17,20 +17,30 @@ services:
       timeout: 5s
       retries: 5
 
-  # FastAPI Application (optional - for full deployment)
-  # api:
-  #   build: .
-  #   container_name: taskapi_app
-  #   ports:
-  #     - "8000:8000"
-  #   environment:
-  #     DATABASE_URL: postgresql://taskuser:taskpass@db:5432/taskdb
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   volumes:
-  #     - .:/app
-  #   command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+  # Python API
+  backend:
+    build: ./backend
+    container_name: taskapi_backend
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    environment: # overiding the db url to us the service name
+      - DATABASE_URL=postgresql://taskuser:taskpass@db:5432/taskdb
+    ports:
+      - "8000:8000"
+
+  # React Frontend (Nginx)
+  frontend:
+    build: ./frontend
+    container_name: taskapi_frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_URL=http://localhost:8000
 
 volumes:
   postgres_data:

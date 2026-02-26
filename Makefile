@@ -1,21 +1,26 @@
+COMPOSE = docker compose
+NAME = task-management
+
 all up:
-	docker compose up -d --build
+	$(COMPOSE) up -d --build
 
 down:
-	docker compose down
+	$(COMPOSE) down
 
+# Clean only project containers
 cc:
-	@containers=$$(docker ps -aq); \
-	if [ -n "$$containers" ]; then \
-		docker rm -f $$containers; \
-	fi
+	$(COMPOSE) rm -f -s -v
 
+# Clean only "dangling" images
 ci:
-	@images=$$(docker images -q); \
-	if [ -n "$$images" ]; then \
-		docker rmi $$images; \
-	fi
+	docker image prune -f
+
+# Total Wipeout
+fclean: down
+	docker network prune -f
+	docker volume rm $$(docker volume ls -q | grep postgres_data) || true
 
 re: down up
 
-cre: down cc ci up
+# Clean and Rebuild
+cre: down cc all
